@@ -1,0 +1,97 @@
+syntax = "proto3";
+
+package protos;
+
+service NameNodeService {
+  // Registers a DataNode with the NameNode.
+  rpc RegisterDataNode(RegisterDataNodeRequest) returns (RegisterDataNodeResponse);
+
+  // Receives heartbeats from DataNodes to keep them marked as active.
+  rpc Heartbeat(HeartbeatRequest) returns (StatusResponse);
+
+  // Retrieves the locations of blocks for reading a file, streaming response to handle large number of blocks.
+  rpc GetBlockLocations(GetBlockLocationsRequest) returns (stream GetBlockLocationsResponse);
+    
+  // Requests creation of a new file, returns initial DataNodes for block placement.
+  rpc CreateFile(CreateFileRequest) returns (CreateFileResponse);
+
+  // Adds a new block to the filesystem, returning the DataNodes it should be placed on.
+  rpc AllocateBlocks(AllocateBlocksRequest) returns (AllocateBlocksResponse);
+
+  // Lists files/directories within a specific path.
+  rpc ListFiles(ListFilesRequest) returns (ListFilesResponse);
+}
+
+// Status response acknowledging receipt.
+message StatusResponse {
+  bool success = 1; 
+  string message = 2;
+}
+
+// DataNode registration request.
+message RegisterDataNodeRequest {
+  string dataNodeAddress = 1; 
+}
+
+// DataNode registration response.
+message RegisterDataNodeResponse {
+  StatusResponse status = 1; 
+}
+
+// Heartbeat request to indicate DataNode is alive.
+message HeartbeatRequest {
+  string dataNodeAddress = 1; 
+  int64 timestamp = 2;
+}
+
+// Request for the locations of blocks for a file.
+message GetBlockLocationsRequest {
+  string filename = 1; 
+}
+
+// Response with the locations of blocks for a file.
+message GetBlockLocationsResponse {
+  message BlockLocation {
+    string blockId = 1;
+    repeated string dataNodeAddresses = 2; // 
+  }
+  repeated BlockLocation blockLocations = 1; 
+}
+
+// Request to create a new file.
+message CreateFileRequest {
+  string filename = 1;        
+}
+
+// Response for file creation request.
+message CreateFileResponse {
+  bool success = 1;           
+}
+
+// Request to add a new block to the filesystem.
+message AllocateBlocksRequest {
+  string filename = 1;        
+  repeated bytes blocksData = 2;             
+}
+
+// Response for add block request.
+message AllocateBlocksResponse {
+  StatusResponse status = 1;        
+  repeated BlockAllocation blockAllocations = 2;
+}
+message BlockAllocation{
+  string blockId = 1;
+  repeated string dataNodeAddresses  = 2;  
+}
+
+// Request to list files/directories in a path.
+message ListFilesRequest {
+  string path = 1;            
+}
+
+// Response for listing files/directories.
+message ListFilesResponse {
+  repeated string filenames = 1; 
+}
+
+ 
