@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package protos;
+
+service DataNodeService {
+  // StoreBlock stores a continuous stream of blocks into the DataNode.
+  rpc StoreBlock(stream StoreBlockRequest) returns (StatusRes);
+
+  // ReadBlock retrieves the data for a given block ID from the DataNode. 
+  rpc ReadBlock(ReadBlockRequest) returns (stream BlockData);
+
+  // ReplicateBlock instructs the DataNode to replicate the specified block 
+  rpc ReplicateBlock(ReplicateBlockRequest) returns (StatusRes);
+}
+
+// Status response acknowledging receipt.
+message StatusRes {
+  bool success = 1; 
+  string message = 2;
+}
+
+// BlockData represents the data of a block stored in a DataNode.
+message BlockData {
+  string blockId = 1;
+  bytes data = 2;
+}
+
+// ReadBlockRequest is used to request the data for a specific block from a DataNode.
+message ReadBlockRequest {
+  string blockId = 1;
+}
+
+// StoreBlockRequest is used to send block data for storage on a DataNode.
+message StoreBlockRequest {
+  BlockData blockData = 1;
+}
+
+// ReplicateBlockRequest contains information for replicating a block to other DataNodes. 
+message ReplicateBlockRequest {
+  BlockData blockData = 1;
+  repeated string dataNodeAddress = 2;
+}

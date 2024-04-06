@@ -1,10 +1,16 @@
 import grpc
 from protos import NameNodeService_pb2, NameNodeService_pb2_grpc
+from protos import DataNodeService_pb2, DataNodeService_pb2_grpc
 
 def main():
     # conn server namenode
-    channel = grpc.insecure_channel('localhost:50053')
-    name_node_stub = NameNodeService_pb2_grpc.NameNodeServiceStub(channel)
+    name_node_address = "localhost:50053"
+    # diferent node server
+    data_node_address = "localhost:50052"
+    
+    
+    name_node_stub = NameNodeService_pb2_grpc.NameNodeServiceStub(grpc.insecure_channel(name_node_address))
+    data_node_stub = DataNodeService_pb2_grpc.DataNodeServiceStub(grpc.insecure_channel(data_node_address))
 
     def test_register_datanode(stub, address):
         print(f"Registering DataNode with address {address}")
@@ -14,7 +20,7 @@ def main():
         assert response.status.success, response.status.message
         print("Registration successful")
 
-    test_register_datanode(name_node_stub, "datanode1:50052")
+    test_register_datanode(name_node_stub, "datanode1:50054")
 
     def test_create_file(stub, filename):
         print(f"Creating file {filename}")
@@ -59,5 +65,14 @@ def main():
     # testing el archivo es solo texto, no tiene bloques ni datos
     test_get_block_locations(name_node_stub, "fileTest.txt")
 
+    def test_store_block(data_node_address, block_id, block_data):
+        with grpc.insecure_channel(data_node_address) as channel:
+            stub = DataNodeService_pb2_grpc.DataNodeServiceStub(channel)
+            block_data_message = DataNodeService_pb2.BlockData(blockId=block_id, data=block_data)
+            response = stub.StoreBlock(iter([DataNodeService_pb2.StoreBlockRequest(blockData=block_data_message)]))
+            print("StoreBlock response:", response)
+
+    test_store_block('localhost:50052', 'test_block', b'This is some block data.')
+    
 if __name__ == "__main__":
     main()

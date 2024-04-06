@@ -1,5 +1,4 @@
-from protos import NameNodeService_pb2_grpc
-from protos import NameNodeService_pb2
+from protos import NameNodeService_pb2_grpc, NameNodeService_pb2
 import os
 import sys
 import grpc
@@ -12,7 +11,6 @@ import threading
 
 
 HEARTBEAT_INTERVAL = 3  # Time interval for checking DataNode liveness
-
 HEARTBEAT_THRESHOLD = 10  # Max time of waitng for heartbeat before DataNode as dead
 
 
@@ -40,7 +38,7 @@ class NameNode(NameNodeService_pb2_grpc.NameNodeServiceServicer):
         logging.info(f"DataNode {address} registered successfully.")
         return NameNodeService_pb2.RegisterDataNodeResponse(
             status=NameNodeService_pb2.StatusResponse(
-                success=True, message="Registered Data Node successfully.")
+                success=True, message=f"Registered {address} successfully.")
         )
 
     # Recepcion de heartbeats de DataNodes para mantenerlos activos.
@@ -148,20 +146,22 @@ def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     NameNodeService_pb2_grpc.add_NameNodeServiceServicer_to_server(
         name_node, server)
-    server.add_insecure_port('[::]:50053')
+    name_node_address = 'localhost:50053'
+    server.add_insecure_port(name_node_address)
 
     liveness_thread = threading.Thread(
         target=name_node.check_data_node_liveness, daemon=True)
     liveness_thread.start()
 
     server.start()
-    logging.info("NameNode gRPC server started, listening on port 50053.")
+    logging.info(
+        f"NameNode gRPC server started, listening on {name_node_address}")
 
     try:
         server.wait_for_termination()
     except KeyboardInterrupt:
         server.stop(0)
-
+        logging.info("NameNode is shutting down.")
 
 if __name__ == '__main__':
     serve()
