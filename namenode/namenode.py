@@ -13,6 +13,7 @@ import threading
 HEARTBEAT_INTERVAL = 3  # Time interval for checking DataNode liveness
 HEARTBEAT_THRESHOLD = 10  # Max time of waitng for heartbeat before DataNode as dead
 
+NAME_NODE_ADDRESS = 'localhost:50053'
 
 class NameNode(NameNodeService_pb2_grpc.NameNodeServiceServicer):
 
@@ -78,15 +79,19 @@ class NameNode(NameNodeService_pb2_grpc.NameNodeServiceServicer):
 
     # Creación de un nuevo archivo en el sistema de archivos.
     def CreateFile(self, request, context):
-        filename = request.filename
-        if self.metadata_manager.create_file(filename):
-            context.set_details('File created.')
-            return NameNodeService_pb2.CreateFileResponse(success=True)
-        else:
-            context.set_code(grpc.StatusCode.ALREADY_EXISTS)
-            context.set_details('File already exists.')
-            return NameNodeService_pb2.CreateFileResponse(success=False)
-
+        try:
+            filename = request.filename
+            if self.metadata_manager.create_file(filename):
+                context.set_details('File created.')
+                return NameNodeService_pb2.CreateFileResponse(success=True)
+            else:
+                context.set_code(grpc.StatusCode.ALREADY_EXISTS)
+                context.set_details('File already exists.')
+                return NameNodeService_pb2.CreateFileResponse(success=False)
+        except (grpc.Error,Exception) as e:
+            logging.error(f"Error creating file: {e}")
+            context.set_code(grpc.StatusCode.INTERNAL)
+        
     # AllocateBlocks es el metodo que se encarga de saber q bloques de datos a los DataNodes
     def AllocateBlocks(self, request, context):
         filename = request.filename
@@ -146,8 +151,7 @@ def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     NameNodeService_pb2_grpc.add_NameNodeServiceServicer_to_server(
         name_node, server)
-    name_node_address = 'localhost:50053'
-    server.add_insecure_port(name_node_address)
+    server.add_insecure_port(NAME_NODE_ADDRESS)
 
     liveness_thread = threading.Thread(
         target=name_node.check_data_node_liveness, daemon=True)
@@ -155,13 +159,14 @@ def serve():
 
     server.start()
     logging.info(
-        f"NameNode gRPC server started, listening on {name_node_address}")
+        f"NameNode gRPC server started, listening on {NAME_NODE_ADDRESS}")
 
     try:
         server.wait_for_termination()
     except KeyboardInterrupt:
         server.stop(0)
         logging.info("NameNode is shutting down.")
+
 
 if __name__ == '__main__':
     serve()

@@ -27,12 +27,14 @@ message BlockData {
 
 // ReadBlockRequest is used to request the data for a specific block from a DataNode.
 message ReadBlockRequest {
-  string blockId = 1;
+  string filename = 1;
+  string blockId = 2;
 }
 
 // StoreBlockRequest is used to send block data for storage on a DataNode.
 message StoreBlockRequest {
   BlockData blockData = 1;
+  string filename = 2;
 }
 
 // ReplicateBlockRequest contains information for replicating a block to other DataNodes. 

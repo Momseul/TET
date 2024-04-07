@@ -22,16 +22,20 @@ class BlockData(_message.Message):
     def __init__(self, blockId: _Optional[str] = ..., data: _Optional[bytes] = ...) -> None: ...
 
 class ReadBlockRequest(_message.Message):
-    __slots__ = ("blockId",)
+    __slots__ = ("filename", "blockId")
+    FILENAME_FIELD_NUMBER: _ClassVar[int]
     BLOCKID_FIELD_NUMBER: _ClassVar[int]
+    filename: str
     blockId: str
-    def __init__(self, blockId: _Optional[str] = ...) -> None: ...
+    def __init__(self, filename: _Optional[str] = ..., blockId: _Optional[str] = ...) -> None: ...
 
 class StoreBlockRequest(_message.Message):
-    __slots__ = ("blockData",)
+    __slots__ = ("blockData", "filename")
     BLOCKDATA_FIELD_NUMBER: _ClassVar[int]
+    FILENAME_FIELD_NUMBER: _ClassVar[int]
     blockData: BlockData
-    def __init__(self, blockData: _Optional[_Union[BlockData, _Mapping]] = ...) -> None: ...
+    filename: str
+    def __init__(self, blockData: _Optional[_Union[BlockData, _Mapping]] = ..., filename: _Optional[str] = ...) -> None: ...
 
 class ReplicateBlockRequest(_message.Message):
     __slots__ = ("blockData", "dataNodeAddress")

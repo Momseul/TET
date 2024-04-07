@@ -31,7 +31,8 @@ class DataNode(DataNodeService_pb2_grpc.DataNodeServiceServicer):
         for request in request_iterator:
             block_id = request.blockData.blockId
             data = request.blockData.data
-            if self.storage.store_block(block_id, data):
+            file_name = request.filename
+            if self.storage.store_block(file_name, block_id, data):
                 logging.info(f"Stored block {block_id} successfully ")
             else:
                 logging.error(f"Failed to store block {block_id}")
@@ -39,13 +40,15 @@ class DataNode(DataNodeService_pb2_grpc.DataNodeServiceServicer):
         # thread para replicacion  ???
         # thread para real file ???
         # reportar al NameNode que almacene un bloque ???
-        return DataNodeService_pb2.StatusRes(success=True, message="Blocks stored successfully")
+        return DataNodeService_pb2.StatusRes(success=True, message=f"Blocks for file:{file_name} stored successfully.")
+
 
     def ReadBlock(self, request, context):
         block_id = request.blockId
-        block_data = self.storage.read_block(block_id)
+        file_name = request.filename
+        block_data = self.storage.read_block(file_name, block_id)
         if block_data is not None:
-            logging.info(f"Block {block_id} read successfully")
+            logging.info(f"Block {block_id} read successfully from file {file_name}")
             yield DataNodeService_pb2.BlockData(blockId=block_id, data=block_data)
         else:
             context.set_code(grpc.StatusCode.NOT_FOUND)
