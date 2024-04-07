@@ -1,6 +1,4 @@
 import logging
-import os
-import sys
 import threading
 import time
 import grpc
@@ -11,9 +9,6 @@ from .storage import Storage
 
 HEARTBEAT_INTERVAL = 3  # Time interval for checking DataNode liveness
 HEARTBEAT_THRESHOLD = 10  # Max time of waitng for heartbeat before DataNode as dead
-
-NAME_NODE_ADDRESS = 'localhost:50053'
-DATA_NODE_ADDRESS = 'localhost:50052'
 
 
 class DataNode(DataNodeService_pb2_grpc.DataNodeServiceServicer):
@@ -42,13 +37,13 @@ class DataNode(DataNodeService_pb2_grpc.DataNodeServiceServicer):
         # reportar al NameNode que almacene un bloque ???
         return DataNodeService_pb2.StatusRes(success=True, message=f"Blocks for file:{file_name} stored successfully.")
 
-
     def ReadBlock(self, request, context):
         block_id = request.blockId
         file_name = request.filename
         block_data = self.storage.read_block(file_name, block_id)
         if block_data is not None:
-            logging.info(f"Block {block_id} read successfully from file {file_name}")
+            logging.info(
+                f"Block {block_id} read successfully from file {file_name}")
             yield DataNodeService_pb2.BlockData(blockId=block_id, data=block_data)
         else:
             context.set_code(grpc.StatusCode.NOT_FOUND)
@@ -71,18 +66,29 @@ class DataNode(DataNodeService_pb2_grpc.DataNodeServiceServicer):
             logging.error(f"Registration with NameNode failed: {e.details()}")
 
     def send_heartbeat(self):
+        last_heartbeat_time = time.time()
         while True:
             try:
+                current_time = time.time()
+                if current_time - last_heartbeat_time > HEARTBEAT_INTERVAL * HEARTBEAT_THRESHOLD:
+                    logging.error(
+                        f"Heartbeat failed: {self.namenode_address} Exceeded maximum retry interval.")
+                    # fin de heartbeat ?
+                    break
+                    # sys.exit(1) # exit the DataNode
                 response = self.stub.Heartbeat(NameNodeService_pb2.HeartbeatRequest(
                     dataNodeAddress=self.datanode_address, timestamp=int(time.time())))
-                if not response.success:
+                if response.success:
+                    #logging.info("Heartbeat to {self.namenode_address} sent successfully")
+                    last_heartbeat_time = current_time
+                else:
                     logging.error("Heartbeat failed: " + response.message)
                 time.sleep(HEARTBEAT_INTERVAL)
             except grpc.RpcError as e:
                 logging.error(f"Heartbeat failed with error: {e.details()}")
                 time.sleep(HEARTBEAT_INTERVAL)
 
-    def start(self):
+    def start_heartbeat(self):
         # registro inicial con el NameNode
         self.register_with_namenode()
 
@@ -94,23 +100,20 @@ class DataNode(DataNodeService_pb2_grpc.DataNodeServiceServicer):
             f"DataNode {self.datanode_address} started. Sending heartbeats to NameNode {self.namenode_address}")
 
 
-def serve():
+def serve(data_node_service, datanode_address):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    data_node_service = DataNode(NAME_NODE_ADDRESS, DATA_NODE_ADDRESS)
     DataNodeService_pb2_grpc.add_DataNodeServiceServicer_to_server(
         data_node_service, server)
-    server.add_insecure_port(DATA_NODE_ADDRESS)
+    server.add_insecure_port(datanode_address)
     server.start()
-    logging.info(f"DataNode serving at {DATA_NODE_ADDRESS}")
+    logging.info(f"DataNode serving at {datanode_address}")
     server.wait_for_termination()
 
 
-if __name__ == "__main__":
-    # DataNode se ejecuta en localhost y se conecta al NameNode en localhost por ahora
-    datanode = DataNode(NAME_NODE_ADDRESS, DATA_NODE_ADDRESS)
-    datanode.start()
-    serve()
-
+def start_data_node_service(namenode_address, datanode_address):
+    datanode = DataNode(namenode_address, datanode_address)
+    datanode.start_heartbeat()
+    serve(datanode, datanode_address)
     # DataNode corriendo
     try:
         while True:
