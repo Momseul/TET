@@ -1,4 +1,5 @@
 import sys
+import os
 import grpc
 from protos import DataNodeService_pb2, DataNodeService_pb2_grpc
 from protos import NameNodeService_pb2, NameNodeService_pb2_grpc
@@ -35,14 +36,20 @@ def put_file_to_datanode(ip_address, port, file_path):
     with open(file_path, 'rb') as file:
         block_id = 0
         for chunk in iter(lambda: file.read(4096), b''):
-            request = DataNodeService_pb2.StoreBlockRequest(blockData=DataNodeService_pb2.BlockData(
-                blockId=str(block_id), data=chunk), filename=file_path)
+            request = DataNodeService_pb2.StoreBlockRequest(
+                blockData=DataNodeService_pb2.BlockData(
+                blockId=str(block_id),
+                data=chunk),
+                filename=file_path)
             response = datanode_service.StoreBlock(iter([request]))
             if not response.success:
                 print("Failed to store block:", response.message)
                 return
             block_id += 1
     print("File stored successfully on the DataNode.")
+
+def get_file(ip_address, port, file_name):
+    print("searching ...")
 
 
 if __name__ == "__main__":
@@ -58,5 +65,8 @@ if __name__ == "__main__":
     if command == "-p":
         create_file_namenode(file_path, NAME_NODE_ADDRESS)
         put_file_to_datanode(ip_address, port, file_path)
+    elif command == "-g":
+        file_name = os.path.basename(file_path)
+        get_file(ip_address, port, file_name)
     else:
         print("Comando no reconocido")
