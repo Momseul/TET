@@ -43,6 +43,7 @@ class Storage:
                 logging.info(
                     f"Read block {block_id} for file {file_name} successfully.")
                 return block_file.read()
+            
         except FileNotFoundError:
             logging.error(f"Block {block_id} not found.")
         except Exception as e:

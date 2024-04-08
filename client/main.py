@@ -49,7 +49,65 @@ def put_file_to_datanode(ip_address, port, file_path):
     print("File stored successfully on the DataNode.")
 
 def get_file(ip_address, port, file_name):
-    print("searching ...")
+    block_id = 0
+    DATA_DOWNLOAD_DIR = "downloads"
+
+    download_directory = os.path.join(os.path.dirname(
+    os.path.abspath(__file__)), DATA_DOWNLOAD_DIR)
+    if not os.path.exists(download_directory):
+        os.makedirs(download_directory)
+
+    file_name_parsed = os.path.splitext(file_name)[0]
+    downloaded_file = os.path.join(download_directory, file_name_parsed)
+    if not os.path.exists(downloaded_file):
+        os.makedirs(downloaded_file)
+
+    channel = grpc.insecure_channel(f"{ip_address}:{port}")
+    datanode_service = DataNodeService_pb2_grpc.DataNodeServiceStub(channel)
+
+    #len([name for name in os.listdir(fil) if os.path.isfile(name)])
+
+    while True:
+        try:
+            request = DataNodeService_pb2.ReadBlockRequest(
+                filename=file_name_parsed,
+                blockId=str(block_id))
+            for block in  datanode_service.ReadBlock(request):
+                
+                block_path = os.path.join(download_directory, file_name_parsed, str(block_id))
+            
+                with open(block_path, "wb") as block_file:
+                        block_file.write(block.data)
+                        logging.info(
+                        f"Stored block {block_id} for file {file_name_parsed} successfully.")
+            block_id+=1
+
+        except AttributeError as atte:
+            logging.error(f"no more files"+ {atte} )
+            break
+        except grpc.RpcError as e:
+            logging.error("error %s", e )
+            break
+            
+    destiny = downloaded_file+"/"+file_name
+    merge_chunks(downloaded_file,destiny)
+
+def merge_chunks(input_directory, output_file):
+    try:
+        with open(output_file, 'wb') as output:
+            chunk_number = 0
+            while True:
+                chunk_file = f"{input_directory}/{chunk_number}"
+                try:
+                    with open(chunk_file, 'rb') as chunk:
+                        output.write(chunk.read())
+                        print(f"Fragmento {chunk_number} agregado al archivo")
+                        chunk_number += 1
+                except FileNotFoundError:
+                    break  # No hay más fragmentos
+    except Exception as e:
+        print(f"Error al reensamblar los fragmentos: {e}")
+    
 
 
 if __name__ == "__main__":
@@ -66,7 +124,9 @@ if __name__ == "__main__":
         create_file_namenode(file_path, NAME_NODE_ADDRESS)
         put_file_to_datanode(ip_address, port, file_path)
     elif command == "-g":
+        print(file_path)
         file_name = os.path.basename(file_path)
+        print(file_name)
         get_file(ip_address, port, file_name)
     else:
         print("Comando no reconocido")

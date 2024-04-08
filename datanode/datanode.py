@@ -1,4 +1,5 @@
 import logging
+import os
 import threading
 import time
 import grpc
@@ -47,7 +48,9 @@ class DataNode(DataNodeService_pb2_grpc.DataNodeServiceServicer):
             yield DataNodeService_pb2.BlockData(blockId=block_id, data=block_data)
         else:
             context.set_code(grpc.StatusCode.NOT_FOUND)
-            context.set_details(f'Block {block_id} not found.')
+            context.set_details(f'Block {block_id} not found.') 
+            return DataNodeService_pb2.StatusRes(success=False, message=f"Blocks for file:{file_name} not found.")
+    
 
     def ReplicateBlock(self, request, context):
         # replication
