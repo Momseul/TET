@@ -11,77 +11,75 @@ NAME_NODE_ADDRESS = 'localhost:50053'
 logging.basicConfig(level=logging.INFO)
 
 
-def upload_file_final(file_path, namenode_address=NAME_NODE_ADDRESS):
+def upload_file_blocks(file_path, namenode_address=NAME_NODE_ADDRESS):
     file_name = os.path.basename(file_path)
     channel = grpc.insecure_channel(namenode_address)
-    stub = NameNodeService_pb2_grpc.NameNodeServiceStub(channel)
+    namenode_service = NameNodeService_pb2_grpc.NameNodeServiceStub(channel)
     # Solicita la creación del archivo en el NameNode
-    create_file_response = stub.CreateFile(
-        NameNodeService_pb2.CreateFileRequest(filename=file_name))
+    if create_file_namenode(file_path, namenode_service):
 
-    if not create_file_response.success:
-        logging(f"Error creating file: {create_file_response.message}")
-        return
+        # Leer el archivo en bloques y solicitar la asignación de DataNodes para cada bloque
+        block_id = 0
+        block_ids = []
+        data_blocks = {}
+        with open(file_path, "rb") as file:
+            while chunk := file.read(4096):
+                block_ids.append(str(block_id))
+                data_blocks[str(block_id)] = chunk
+                block_id += 1
 
-    # Leer el archivo en bloques y solicitar la asignación de DataNodes para cada bloque
-    block_id = 0
-    block_ids = []
-    data_blocks = {}
-    with open(file_path, "rb") as file:
-        while chunk := file.read(4096):
-            block_ids.append(str(block_id))
-            data_blocks[str(block_id)] = chunk
-            block_id += 1
+        allocate_blocks_response = namenode_service.AllocateBlocks(
+            NameNodeService_pb2.AllocateBlocksRequest(
+                filename=file_name, blockIds=block_ids),
+            timeout=30
+        )
+        logging.info(f"Allocating blocks for {file_name}...")
+        # print(f"Allocate blocks response: {allocate_blocks_response}")
 
-    allocate_blocks_response = stub.AllocateBlocks(
-        NameNodeService_pb2.AllocateBlocksRequest(
-            filename=file_name, blockIds=block_ids),
-        timeout=10
-    )
-    print(f"Allocate blocks response: {allocate_blocks_response}")
+        if not allocate_blocks_response.status.success:
+            logging.error("Error allocating blocks on NameNode.")
+            return
 
-    if not allocate_blocks_response.status.success:
-        logging.error("Error allocating blocks on NameNode.")
-        return
+        for allocation in allocate_blocks_response.blockAllocations:
+            block_id = allocation.blockId
+            data_node_addresses = allocation.dataNodeAddresses
+            for data_node_address in data_node_addresses:
+                datanode_channel = grpc.insecure_channel(data_node_address)
+                datanode_stub = DataNodeService_pb2_grpc.DataNodeServiceStub(
+                    datanode_channel)
+                block_data = data_blocks[block_id]
 
-    for allocation in allocate_blocks_response.blockAllocations:
-        block_id = allocation.blockId
-        data_node_addresses = allocation.dataNodeAddresses
-        for data_node_address in data_node_addresses:
-            datanode_channel = grpc.insecure_channel(data_node_address)
-            datanode_stub = DataNodeService_pb2_grpc.DataNodeServiceStub(
-                datanode_channel)
-            block_data = data_blocks[block_id]
-
-            response = datanode_stub.StoreBlock(iter([DataNodeService_pb2.StoreBlockRequest(
-                blockData=DataNodeService_pb2.BlockData(
-                    blockId=block_id,
-                    data=block_data),
-                filename=file_name)]))
-            if not response.success:
-                logging.error(
-                    f"Failed to store block {allocation.blockId} in DataNode {data_node_address}")
-                return
-    logging.info(f"File {file_name} stored.")
+                response = datanode_stub.StoreBlock(iter([DataNodeService_pb2.StoreBlockRequest(
+                    blockData=DataNodeService_pb2.BlockData(
+                        blockId=block_id,
+                        data=block_data),
+                    filename=file_name)]))
+                if not response.success:
+                    logging.error(
+                        f"Failed to store block {allocation.blockId} in DataNode {data_node_address}")
+                    return
+        logging.info(
+            f"File {file_name} stored on DataNode {data_node_address} successfully.")
+    else:
+        logging.error(f"Unexpected error while creating file {file_name}.")
 
 
-def create_file_namenode(file_name, namenode_address):
-    channel = grpc.insecure_channel(namenode_address)
-    stub = NameNodeService_pb2_grpc.NameNodeServiceStub(channel)
+def create_file_namenode(file_name, stub):
     try:
-        response = stub.CreateFile(
+        create_file_response = stub.CreateFile(
             NameNodeService_pb2.CreateFileRequest(filename=file_name))
-        if response.success:
+        if create_file_response.success:
             logging.info(
-                f"File {file_name} registered on NameNode - MetaData: {response}")
-            # y los metadatos de asignacion/d de bloques y distribucion datanodes ?
-            return response
+                f"File {file_name} created on NameNode successfully.")
+            # return True
+            return create_file_response
         else:
-            logging.error(f"Failed to register file {file_name} in NameNode.")
-            return None
+            logging.error(f"Failed to create file; {file_name} in NameNode.")
+            # return False
+            return create_file_response
     except (Exception, grpc.RpcError) as e:
         logging.error(f"Error creating file: {e}")
-        return None
+        return False
 
 
 def put_file_to_datanode(ip_address, port, file_path):
@@ -177,9 +175,8 @@ if __name__ == "__main__":
     file_path = sys.argv[4]
 
     if command == "-p":
-        # upload_file_final(file_path, NAME_NODE_ADDRESS)
-        create_file_namenode(file_path, NAME_NODE_ADDRESS)
-        put_file_to_datanode(ip_address, port, file_path)
+        upload_file_blocks(file_path, NAME_NODE_ADDRESS)
+        # put_file_to_datanode(ip_address, port, file_path)
     elif command == "-g":
         print(file_path)
         file_name = os.path.basename(file_path)

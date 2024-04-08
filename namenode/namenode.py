@@ -87,11 +87,9 @@ class NameNode(NameNodeService_pb2_grpc.NameNodeServiceServicer):
                 context.set_code(grpc.StatusCode.ALREADY_EXISTS)
                 context.set_details('File already exists.')
                 return NameNodeService_pb2.CreateFileResponse(success=False)
-        except FileNotFoundError:
-            logging.error(f"Error creating file: {filename} not found")
+        except (grpc.RpcError, Exception) as e:
+            logging.error(f"Error creating file: {filename} not found: {e}")
             context.set_code(grpc.StatusCode.NOT_FOUND)
-        except Exception as e:
-            logging.error(f"Unexpected error creating file: {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
 
     # AllocateBlocks es el metodo que se encarga de saber q bloques de datos a los DataNodes
@@ -108,7 +106,7 @@ class NameNode(NameNodeService_pb2_grpc.NameNodeServiceServicer):
             context.set_code(grpc.StatusCode.RESOURCE_EXHAUSTED)
             context.set_details("No active DataNodes available.")
             return NameNodeService_pb2.AllocateBlocksResponse(status=NameNodeService_pb2.StatusResponse(success=False, message="No active DataNodes available."))
-            
+
         for block_id in blocks_ids:
             logging.info(f"Allocating block {block_id} for file {filename}")
             # lista de datanodes activos para distribuir los bloques entre ellos
@@ -126,8 +124,8 @@ class NameNode(NameNodeService_pb2_grpc.NameNodeServiceServicer):
 
             if block_data:
                 block_allocations.append(NameNodeService_pb2.BlockAllocation
-                                        (blockId=block_id,
-                                        dataNodeAddresses=data_nodes_to_storage))
+                                         (blockId=block_id,
+                                          dataNodeAddresses=[data_nodes_to_storage]))
                 logging.info(
                     f"Block {block_id} allocated to DataNode {data_nodes_to_storage}")
             else:

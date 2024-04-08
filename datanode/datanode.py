@@ -33,9 +33,7 @@ class DataNode(DataNodeService_pb2_grpc.DataNodeServiceServicer):
             else:
                 logging.error(f"Failed to store block {block_id}")
                 return DataNodeService_pb2.StatusRes(success=False, message="Failed to store block")
-        # thread para replicacion  ???
-        # thread para real file ???
-        # reportar al NameNode que almacene un bloque ???
+
         return DataNodeService_pb2.StatusRes(success=True, message=f"Blocks for file:{file_name} stored successfully.")
 
     def ReadBlock(self, request, context):
@@ -48,9 +46,8 @@ class DataNode(DataNodeService_pb2_grpc.DataNodeServiceServicer):
             yield DataNodeService_pb2.BlockData(blockId=block_id, data=block_data)
         else:
             context.set_code(grpc.StatusCode.NOT_FOUND)
-            context.set_details(f'Block {block_id} not found.') 
+            context.set_details(f'Block {block_id} not found.')
             return DataNodeService_pb2.StatusRes(success=False, message=f"Blocks for file:{file_name} not found.")
-    
 
     def ReplicateBlock(self, request, context):
         # replication
@@ -82,7 +79,7 @@ class DataNode(DataNodeService_pb2_grpc.DataNodeServiceServicer):
                 response = self.stub.Heartbeat(NameNodeService_pb2.HeartbeatRequest(
                     dataNodeAddress=self.datanode_address, timestamp=int(time.time())))
                 if response.success:
-                    #logging.info("Heartbeat to {self.namenode_address} sent successfully")
+                    # logging.info("Heartbeat to {self.namenode_address} sent successfully")
                     last_heartbeat_time = current_time
                 else:
                     logging.error("Heartbeat failed: " + response.message)
