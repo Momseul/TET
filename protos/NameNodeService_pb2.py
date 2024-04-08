@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x15NameNodeService.proto\x12\x06protos\"2\n\x0eStatusResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"2\n\x17RegisterDataNodeRequest\x12\x17\n\x0f\x64\x61taNodeAddress\x18\x01 \x01(\t\"B\n\x18RegisterDataNodeResponse\x12&\n\x06status\x18\x01 \x01(\x0b\x32\x16.protos.StatusResponse\">\n\x10HeartbeatRequest\x12\x17\n\x0f\x64\x61taNodeAddress\x18\x01 \x01(\t\x12\x11\n\ttimestamp\x18\x02 \x01(\x03\",\n\x18GetBlockLocationsRequest\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\"\xa1\x01\n\x19GetBlockLocationsResponse\x12G\n\x0e\x62lockLocations\x18\x01 \x03(\x0b\x32/.protos.GetBlockLocationsResponse.BlockLocation\x1a;\n\rBlockLocation\x12\x0f\n\x07\x62lockId\x18\x01 \x01(\t\x12\x19\n\x11\x64\x61taNodeAddresses\x18\x02 \x03(\t\"%\n\x11\x43reateFileRequest\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\"%\n\x12\x43reateFileResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\"=\n\x15\x41llocateBlocksRequest\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\x12\x12\n\nblocksData\x18\x02 \x03(\x0c\"s\n\x16\x41llocateBlocksResponse\x12&\n\x06status\x18\x01 \x01(\x0b\x32\x16.protos.StatusResponse\x12\x31\n\x10\x62lockAllocations\x18\x02 \x03(\x0b\x32\x17.protos.BlockAllocation\"=\n\x0f\x42lockAllocation\x12\x0f\n\x07\x62lockId\x18\x01 \x01(\t\x12\x19\n\x11\x64\x61taNodeAddresses\x18\x02 \x03(\t\" \n\x10ListFilesRequest\x12\x0c\n\x04path\x18\x01 \x01(\t\"&\n\x11ListFilesResponse\x12\x11\n\tfilenames\x18\x01 \x03(\t2\xdb\x03\n\x0fNameNodeService\x12U\n\x10RegisterDataNode\x12\x1f.protos.RegisterDataNodeRequest\x1a .protos.RegisterDataNodeResponse\x12=\n\tHeartbeat\x12\x18.protos.HeartbeatRequest\x1a\x16.protos.StatusResponse\x12Z\n\x11GetBlockLocations\x12 .protos.GetBlockLocationsRequest\x1a!.protos.GetBlockLocationsResponse0\x01\x12\x43\n\nCreateFile\x12\x19.protos.CreateFileRequest\x1a\x1a.protos.CreateFileResponse\x12O\n\x0e\x41llocateBlocks\x12\x1d.protos.AllocateBlocksRequest\x1a\x1e.protos.AllocateBlocksResponse\x12@\n\tListFiles\x12\x18.protos.ListFilesRequest\x1a\x19.protos.ListFilesResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x15NameNodeService.proto\x12\x06protos\"2\n\x0eStatusResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"2\n\x17RegisterDataNodeRequest\x12\x17\n\x0f\x64\x61taNodeAddress\x18\x01 \x01(\t\"B\n\x18RegisterDataNodeResponse\x12&\n\x06status\x18\x01 \x01(\x0b\x32\x16.protos.StatusResponse\">\n\x10HeartbeatRequest\x12\x17\n\x0f\x64\x61taNodeAddress\x18\x01 \x01(\t\x12\x11\n\ttimestamp\x18\x02 \x01(\x03\",\n\x18GetBlockLocationsRequest\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\"\xa1\x01\n\x19GetBlockLocationsResponse\x12G\n\x0e\x62lockLocations\x18\x01 \x03(\x0b\x32/.protos.GetBlockLocationsResponse.BlockLocation\x1a;\n\rBlockLocation\x12\x0f\n\x07\x62lockId\x18\x01 \x01(\t\x12\x19\n\x11\x64\x61taNodeAddresses\x18\x02 \x03(\t\"%\n\x11\x43reateFileRequest\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\"%\n\x12\x43reateFileResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\";\n\x15\x41llocateBlocksRequest\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\x12\x10\n\x08\x62lockIds\x18\x02 \x03(\t\"s\n\x16\x41llocateBlocksResponse\x12&\n\x06status\x18\x01 \x01(\x0b\x32\x16.protos.StatusResponse\x12\x31\n\x10\x62lockAllocations\x18\x02 \x03(\x0b\x32\x17.protos.BlockAllocation\"=\n\x0f\x42lockAllocation\x12\x0f\n\x07\x62lockId\x18\x01 \x01(\t\x12\x19\n\x11\x64\x61taNodeAddresses\x18\x02 \x03(\t\" \n\x10ListFilesRequest\x12\x0c\n\x04path\x18\x01 \x01(\t\"&\n\x11ListFilesResponse\x12\x11\n\tfilenames\x18\x01 \x03(\t2\xdb\x03\n\x0fNameNodeService\x12U\n\x10RegisterDataNode\x12\x1f.protos.RegisterDataNodeRequest\x1a .protos.RegisterDataNodeResponse\x12=\n\tHeartbeat\x12\x18.protos.HeartbeatRequest\x1a\x16.protos.StatusResponse\x12Z\n\x11GetBlockLocations\x12 .protos.GetBlockLocationsRequest\x1a!.protos.GetBlockLocationsResponse0\x01\x12\x43\n\nCreateFile\x12\x19.protos.CreateFileRequest\x1a\x1a.protos.CreateFileResponse\x12O\n\x0e\x41llocateBlocks\x12\x1d.protos.AllocateBlocksRequest\x1a\x1e.protos.AllocateBlocksResponse\x12@\n\tListFiles\x12\x18.protos.ListFilesRequest\x1a\x19.protos.ListFilesResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -40,15 +40,15 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _globals['_CREATEFILERESPONSE']._serialized_start=518
   _globals['_CREATEFILERESPONSE']._serialized_end=555
   _globals['_ALLOCATEBLOCKSREQUEST']._serialized_start=557
-  _globals['_ALLOCATEBLOCKSREQUEST']._serialized_end=618
-  _globals['_ALLOCATEBLOCKSRESPONSE']._serialized_start=620
-  _globals['_ALLOCATEBLOCKSRESPONSE']._serialized_end=735
-  _globals['_BLOCKALLOCATION']._serialized_start=737
-  _globals['_BLOCKALLOCATION']._serialized_end=798
-  _globals['_LISTFILESREQUEST']._serialized_start=800
-  _globals['_LISTFILESREQUEST']._serialized_end=832
-  _globals['_LISTFILESRESPONSE']._serialized_start=834
-  _globals['_LISTFILESRESPONSE']._serialized_end=872
-  _globals['_NAMENODESERVICE']._serialized_start=875
-  _globals['_NAMENODESERVICE']._serialized_end=1350
+  _globals['_ALLOCATEBLOCKSREQUEST']._serialized_end=616
+  _globals['_ALLOCATEBLOCKSRESPONSE']._serialized_start=618
+  _globals['_ALLOCATEBLOCKSRESPONSE']._serialized_end=733
+  _globals['_BLOCKALLOCATION']._serialized_start=735
+  _globals['_BLOCKALLOCATION']._serialized_end=796
+  _globals['_LISTFILESREQUEST']._serialized_start=798
+  _globals['_LISTFILESREQUEST']._serialized_end=830
+  _globals['_LISTFILESRESPONSE']._serialized_start=832
+  _globals['_LISTFILESRESPONSE']._serialized_end=870
+  _globals['_NAMENODESERVICE']._serialized_start=873
+  _globals['_NAMENODESERVICE']._serialized_end=1348
 # @@protoc_insertion_point(module_scope)

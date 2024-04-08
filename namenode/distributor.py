@@ -6,12 +6,13 @@ class BlockDistributor:
     def update_data_nodes(self, data_nodes):
         self.data_nodes = data_nodes
 
-    def distribute_block(self):
-        """" Return the address of the DataNode to store a block"""
+    def distribute_block(self, active_data_nodes):
+        """" Return the address of the DataNodes to store a block"""
+        if not active_data_nodes:
+            print("No active DataNodes available")
+            return None
         # round-robin simple block distribution
-        if not self.data_nodes:
-            return None, "No DataNodes available"
-        data_node_addresses = list(self.data_nodes.keys())
-        selected_data_node_address = data_node_addresses[self.current_index]
-        self.current_index = (self.current_index + 1) % len(self.data_nodes)
-        return selected_data_node_address, None
+        selected_data_node_address = list(active_data_nodes)[
+            self.current_index % len(active_data_nodes)]
+        self.current_index += 1
+        return selected_data_node_address

@@ -1,6 +1,4 @@
 from protos import NameNodeService_pb2_grpc, NameNodeService_pb2
-import os
-import sys
 import grpc
 from concurrent import futures
 import time
@@ -15,6 +13,7 @@ HEARTBEAT_THRESHOLD = 10  # Max time of waitng for heartbeat before DataNode as 
 
 NAME_NODE_ADDRESS = 'localhost:50053'
 
+
 class NameNode(NameNodeService_pb2_grpc.NameNodeServiceServicer):
 
     def __init__(self):
@@ -25,9 +24,6 @@ class NameNode(NameNodeService_pb2_grpc.NameNodeServiceServicer):
         self.heartbeat_lock = threading.Lock()  # Lock para manejar los heartbeats
 
         logging.basicConfig(level=logging.INFO)
-
-    def update_data_nodes_list(self, data_nodes):
-        self.block_distribudor.update_data_nodes(data_nodes)
 
     # Registro de DataNodes en el NameNode.
     def RegisterDataNode(self, request, context):
@@ -81,46 +77,63 @@ class NameNode(NameNodeService_pb2_grpc.NameNodeServiceServicer):
     def CreateFile(self, request, context):
         try:
             filename = request.filename
-            if self.metadata_manager.create_file(filename):
-                context.set_details('File created.')
-                return NameNodeService_pb2.CreateFileResponse(success=True)
+            if self.metadata_manager.get_file_metadata(filename) is None:
+                if self.metadata_manager.create_file(filename):
+                    logging.info(f"File {filename} created successfully.")
+                    context.set_details(f'File created {filename}')
+                    return NameNodeService_pb2.CreateFileResponse(success=True)
             else:
+                logging.error(f"File {filename} already exists.")
                 context.set_code(grpc.StatusCode.ALREADY_EXISTS)
                 context.set_details('File already exists.')
                 return NameNodeService_pb2.CreateFileResponse(success=False)
-        except (grpc.Error,Exception) as e:
-            logging.error(f"Error creating file: {e}")
+        except FileNotFoundError:
+            logging.error(f"Error creating file: {filename} not found")
+            context.set_code(grpc.StatusCode.NOT_FOUND)
+        except Exception as e:
+            logging.error(f"Unexpected error creating file: {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
-        
+
     # AllocateBlocks es el metodo que se encarga de saber q bloques de datos a los DataNodes
     def AllocateBlocks(self, request, context):
         filename = request.filename
-        blocks_data = request.blocksData
+        blocks_ids = request.blockIds
+        block_allocations = []  # Lista de bloques asignados
 
-        active_data_nodes = [address for address,
-                             data_node_info in self.data_nodes.items() if data_node_info["active"]]
+        # Se obtienen los DataNodes activos
+        active_data_nodes = [address for address, data_node_info in self.data_nodes.items(
+        ) if data_node_info["active"]]
+        # Si no hay DataNodes activos, no se pueden asignar bloques
         if not active_data_nodes:
             context.set_code(grpc.StatusCode.RESOURCE_EXHAUSTED)
             context.set_details("No active DataNodes available.")
             return NameNodeService_pb2.AllocateBlocksResponse(status=NameNodeService_pb2.StatusResponse(success=False, message="No active DataNodes available."))
+            
+        for block_id in blocks_ids:
+            logging.info(f"Allocating block {block_id} for file {filename}")
+            # lista de datanodes activos para distribuir los bloques entre ellos
+            data_nodes_to_storage = self.block_distribudor.distribute_block(
+                active_data_nodes)
 
-        block_allocations = []  # Lista de bloques asignados
-
-        for block_data in blocks_data:
-            data_node_address, error = self.block_distribudor.distribute_block()
-            if error:
+            if not data_nodes_to_storage:
                 context.set_code(grpc.StatusCode.RESOURCE_EXHAUSTED)
-                context.set_details(error)
-                return NameNodeService_pb2.AllocateBlocksResponse(status=NameNodeService_pb2.StatusResponse(status=False, message=error))
+                context.set_details(
+                    "Failed to distribute block due to lack of active DataNodes.")
+                return NameNodeService_pb2.AllocateBlocksResponse(status=NameNodeService_pb2.StatusResponse(success=False, message="Failed to distribute block."))
 
-            block_id = self.metadata_manager.add_block(
-                filename, data_node_address, block_data)
-            if block_id:
-                block_allocations.append(NameNodeService_pb2.BlockAllocation(
-                    blockId=block_id, dataNodeAddresses=[data_node_address]))
+            block_data = self.metadata_manager.add_block(
+                filename, block_id, data_nodes_to_storage)
+
+            if block_data:
+                block_allocations.append(NameNodeService_pb2.BlockAllocation
+                                        (blockId=block_id,
+                                        dataNodeAddresses=data_nodes_to_storage))
+                logging.info(
+                    f"Block {block_id} allocated to DataNode {data_nodes_to_storage}")
             else:
                 context.set_code(grpc.StatusCode.INTERNAL)
                 context.set_details("Error adding block to metadata.")
+                logging.error("Error adding block to metadata.")
                 return NameNodeService_pb2.AllocateBlocksResponse(status=NameNodeService_pb2.StatusResponse(success=False, message="Error adding block to metadata."))
 
         return NameNodeService_pb2.AllocateBlocksResponse(status=NameNodeService_pb2.StatusResponse(success=True, message="Blocks allocated successfully."), blockAllocations=block_allocations)
@@ -128,8 +141,6 @@ class NameNode(NameNodeService_pb2_grpc.NameNodeServiceServicer):
     # Listado de archivos/directorios
     def ListFiles(self, request, context):
         filenames = list(self.metadata_manager.list_files())
-        # path = request.path  # Esta versión no utiliza el path directamente
-        # filenames = list(self.files_metadata.keys())
         return NameNodeService_pb2.ListFilesResponse(filenames=filenames)
 
     def check_data_node_liveness(self):

@@ -1,7 +1,7 @@
 import json
+import logging
 import os
 import threading
-import uuid
 
 
 class MetadataManager:
@@ -13,11 +13,14 @@ class MetadataManager:
     def load_metadata(self):
         """Loads metadata from a JSON file"""
         with self.lock:
+            if not os.path.isfile(self.filepath):
+                self.files_metadata = {}
+                return self.files_metadata
             try:
                 with open(self.filepath, 'r') as file:
                     self.files_metadata = json.load(file)
             except (FileNotFoundError, json.JSONDecodeError) as e:
-                print(f"Error loading metadata: {e}")
+                logging.error(f"Error loading metadata: {e}")
                 self.files_metadata = {}
             return self.files_metadata
 
@@ -35,18 +38,31 @@ class MetadataManager:
         else:
             return False
 
-    def add_block(self, filename, data_node_address, block_data):
-        if filename in self.files_metadata:
-            # Genera un ID único para el bloque con UUIDs
-            block_id = str(uuid.uuid4())
-            self.files_metadata[filename]["blocks"].append({
+    def add_block(self, filename, block_id, data_node_addresses):
+            if filename not in self.files_metadata:
+                self.create_file(filename)
+                logging.error(
+                    f"File {filename} not found in metadata. Ensure the file is created first.")
+                return False
+
+            blocks = self.files_metadata[filename]["blocks"]
+            # Verificar si el bloque ya existe
+            if any(block["id"] == block_id for block in blocks):
+                logging.error(
+                    f"Block {block_id} already exists for file {filename}.")
+                return False
+
+            # Agregar el nuevo bloque y ubicaciones a la lista de bloques
+            blocks.append({
                 "id": block_id,
-                "locations": [data_node_address],
+                "locations": [data_node_addresses]
             })
+            self.files_metadata[filename]["blocks"] = blocks
+            # Guardar los metadatos actualizados
             self.save_metadata()
-            return block_id
-        else:
-            return None
+            logging.info(
+                f"Block {block_id} added for file {filename} with locations {data_node_addresses}.")
+            return True
 
     def get_file_metadata(self, filename):
         return self.files_metadata.get(filename, None)

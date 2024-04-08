@@ -11,6 +11,60 @@ NAME_NODE_ADDRESS = 'localhost:50053'
 logging.basicConfig(level=logging.INFO)
 
 
+def upload_file_final(file_path, namenode_address=NAME_NODE_ADDRESS):
+    file_name = os.path.basename(file_path)
+    channel = grpc.insecure_channel(namenode_address)
+    stub = NameNodeService_pb2_grpc.NameNodeServiceStub(channel)
+    # Solicita la creación del archivo en el NameNode
+    create_file_response = stub.CreateFile(
+        NameNodeService_pb2.CreateFileRequest(filename=file_name))
+
+    if not create_file_response.success:
+        logging(f"Error creating file: {create_file_response.message}")
+        return
+
+    # Leer el archivo en bloques y solicitar la asignación de DataNodes para cada bloque
+    block_id = 0
+    block_ids = []
+    data_blocks = {}
+    with open(file_path, "rb") as file:
+        while chunk := file.read(4096):
+            block_ids.append(str(block_id))
+            data_blocks[str(block_id)] = chunk
+            block_id += 1
+
+    allocate_blocks_response = stub.AllocateBlocks(
+        NameNodeService_pb2.AllocateBlocksRequest(
+            filename=file_name, blockIds=block_ids),
+        timeout=10
+    )
+    print(f"Allocate blocks response: {allocate_blocks_response}")
+
+    if not allocate_blocks_response.status.success:
+        logging.error("Error allocating blocks on NameNode.")
+        return
+
+    for allocation in allocate_blocks_response.blockAllocations:
+        block_id = allocation.blockId
+        data_node_addresses = allocation.dataNodeAddresses
+        for data_node_address in data_node_addresses:
+            datanode_channel = grpc.insecure_channel(data_node_address)
+            datanode_stub = DataNodeService_pb2_grpc.DataNodeServiceStub(
+                datanode_channel)
+            block_data = data_blocks[block_id]
+
+            response = datanode_stub.StoreBlock(iter([DataNodeService_pb2.StoreBlockRequest(
+                blockData=DataNodeService_pb2.BlockData(
+                    blockId=block_id,
+                    data=block_data),
+                filename=file_name)]))
+            if not response.success:
+                logging.error(
+                    f"Failed to store block {allocation.blockId} in DataNode {data_node_address}")
+                return
+    logging.info(f"File {file_name} stored.")
+
+
 def create_file_namenode(file_name, namenode_address):
     channel = grpc.insecure_channel(namenode_address)
     stub = NameNodeService_pb2_grpc.NameNodeServiceStub(channel)
@@ -38,8 +92,8 @@ def put_file_to_datanode(ip_address, port, file_path):
         for chunk in iter(lambda: file.read(4096), b''):
             request = DataNodeService_pb2.StoreBlockRequest(
                 blockData=DataNodeService_pb2.BlockData(
-                blockId=str(block_id),
-                data=chunk),
+                    blockId=str(block_id),
+                    data=chunk),
                 filename=file_path)
             response = datanode_service.StoreBlock(iter([request]))
             if not response.success:
@@ -48,12 +102,13 @@ def put_file_to_datanode(ip_address, port, file_path):
             block_id += 1
     print("File stored successfully on the DataNode.")
 
+
 def get_file(ip_address, port, file_name):
     block_id = 0
     DATA_DOWNLOAD_DIR = "downloads"
 
     download_directory = os.path.join(os.path.dirname(
-    os.path.abspath(__file__)), DATA_DOWNLOAD_DIR)
+        os.path.abspath(__file__)), DATA_DOWNLOAD_DIR)
     if not os.path.exists(download_directory):
         os.makedirs(download_directory)
 
@@ -65,32 +120,34 @@ def get_file(ip_address, port, file_name):
     channel = grpc.insecure_channel(f"{ip_address}:{port}")
     datanode_service = DataNodeService_pb2_grpc.DataNodeServiceStub(channel)
 
-    #len([name for name in os.listdir(fil) if os.path.isfile(name)])
+    # len([name for name in os.listdir(fil) if os.path.isfile(name)])
 
     while True:
         try:
             request = DataNodeService_pb2.ReadBlockRequest(
                 filename=file_name_parsed,
                 blockId=str(block_id))
-            for block in  datanode_service.ReadBlock(request):
-                
-                block_path = os.path.join(download_directory, file_name_parsed, str(block_id))
-            
+            for block in datanode_service.ReadBlock(request):
+
+                block_path = os.path.join(
+                    download_directory, file_name_parsed, str(block_id))
+
                 with open(block_path, "wb") as block_file:
-                        block_file.write(block.data)
-                        logging.info(
+                    block_file.write(block.data)
+                    logging.info(
                         f"Stored block {block_id} for file {file_name_parsed} successfully.")
-            block_id+=1
+            block_id += 1
 
         except AttributeError as atte:
-            logging.error(f"no more files"+ {atte} )
+            logging.error(f"no more files" + {atte})
             break
         except grpc.RpcError as e:
-            logging.error("error %s", e )
+            logging.error("error %s", e)
             break
-            
+
     destiny = downloaded_file+"/"+file_name
-    merge_chunks(downloaded_file,destiny)
+    merge_chunks(downloaded_file, destiny)
+
 
 def merge_chunks(input_directory, output_file):
     try:
@@ -107,7 +164,6 @@ def merge_chunks(input_directory, output_file):
                     break  # No hay más fragmentos
     except Exception as e:
         print(f"Error al reensamblar los fragmentos: {e}")
-    
 
 
 if __name__ == "__main__":
@@ -121,6 +177,7 @@ if __name__ == "__main__":
     file_path = sys.argv[4]
 
     if command == "-p":
+        # upload_file_final(file_path, NAME_NODE_ADDRESS)
         create_file_namenode(file_path, NAME_NODE_ADDRESS)
         put_file_to_datanode(ip_address, port, file_path)
     elif command == "-g":

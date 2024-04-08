@@ -71,7 +71,7 @@ message CreateFileResponse {
 // Request to add a new block to the filesystem.
 message AllocateBlocksRequest {
   string filename = 1;        
-  repeated bytes blocksData = 2;             
+  repeated string blockIds = 2;             
 }
 
 // Response for add block request.

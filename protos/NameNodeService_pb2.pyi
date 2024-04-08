@@ -65,12 +65,12 @@ class CreateFileResponse(_message.Message):
     def __init__(self, success: bool = ...) -> None: ...
 
 class AllocateBlocksRequest(_message.Message):
-    __slots__ = ("filename", "blocksData")
+    __slots__ = ("filename", "blockIds")
     FILENAME_FIELD_NUMBER: _ClassVar[int]
-    BLOCKSDATA_FIELD_NUMBER: _ClassVar[int]
+    BLOCKIDS_FIELD_NUMBER: _ClassVar[int]
     filename: str
-    blocksData: _containers.RepeatedScalarFieldContainer[bytes]
-    def __init__(self, filename: _Optional[str] = ..., blocksData: _Optional[_Iterable[bytes]] = ...) -> None: ...
+    blockIds: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, filename: _Optional[str] = ..., blockIds: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class AllocateBlocksResponse(_message.Message):
     __slots__ = ("status", "blockAllocations")
