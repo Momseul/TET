@@ -2,7 +2,7 @@
 Sistema distribuido de archivos basado en GFS, el sistema soporta la subida y almacenamientos de archivos devididos en bloques para su posterior lectura.
 El sistema tiene 3 componentes principales: datanode, namenode y cliente; el cliente es quien se encarga de las operación de particionamiento, subida, busqueda, descarga y reensable de archivos. El namenode es quien gestiona las replicas y gestionar la distribución de archivos, además de controlar la metadata correspondiente; por ultimo el datanode es quien se encarga de almacenar y distribuir los bloques a sus pares.
 
-hghfg
+
 
 
 ### Modo de uso
